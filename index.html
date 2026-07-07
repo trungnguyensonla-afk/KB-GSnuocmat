@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IOC Sơn La — Giám sát chất lượng nước hồ 2025–2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1b26; --panel:#132734; --panel2:#193647; --line:#254a5e;
+    --ink:#e9f3f7; --ink2:#a7c4d2; --muted:#7896a6;
+    --accent:#2ba8d6; --accent-bg:#0f3346;
+    --green:#22b07d; --green-bg:#0f3328;
+    --amber:#eda100; --amber-bg:#3a2e0e;
+    --red:#e35555; --red-bg:#3a1717;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink);
+       -webkit-font-smoothing:antialiased;line-height:1.5;padding:0 0 40px}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+  header.top{background:linear-gradient(90deg,#0e4460,#0d1b26);border-bottom:1px solid var(--line);
+             padding:15px 0;position:sticky;top:0;z-index:10}
+  .top-in{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:13px}
+  .logo{width:46px;height:46px;border-radius:9px;background:var(--accent);display:flex;align-items:center;
+        justify-content:center;font-weight:700;font-size:18px;color:#fff;flex-shrink:0}
+  .brand h1{font-size:16.5px;font-weight:600}
+  .brand p{font-size:12px;color:var(--ink2)}
+  .tags{display:flex;gap:7px;flex-wrap:wrap}
+  .tag{font-size:11.5px;padding:5px 11px;border-radius:20px;font-weight:600}
+  .tag.live{background:var(--green-bg);color:#5fe0b0}
+  .tag.src{background:var(--accent-bg);color:#7cd0f0}
+  .tag .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c07d;margin-right:5px;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .banner{margin-top:18px;background:var(--red-bg);border:1px solid #7a2020;border-left:4px solid var(--red);
+          border-radius:var(--radius);padding:13px 16px;display:flex;gap:12px;align-items:center}
+  .banner .ic{width:34px;height:34px;border-radius:8px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  .banner .h{font-size:14px;font-weight:600;color:#ffb0b0}
+  .banner .b{font-size:12.5px;color:var(--ink2);margin-top:2px}
+
+  section.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-top:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px}
+  .kpi .lab{font-size:12px;color:var(--ink2);margin-bottom:5px}
+  .kpi .val{font-size:25px;font-weight:700;line-height:1.05}
+  .kpi .val small{font-size:12px;color:var(--muted);font-weight:400}
+  .kpi .sub{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .kpi.red{border-top:3px solid var(--red)}.kpi.red .val{color:#ff8a8a}
+  .kpi.green{border-top:3px solid var(--green)}.kpi.green .val{color:#3fd39b}
+  .kpi.blue{border-top:3px solid var(--accent)}.kpi.blue .val{color:#5fc8ee}
+  .kpi.amber{border-top:3px solid var(--amber)}.kpi.amber .val{color:#f5b73d}
+
+  .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;margin-top:18px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .card h2{font-size:15px;font-weight:600;margin-bottom:3px}
+  .card .desc{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-bottom:12px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .chartbox{position:relative;width:100%;height:300px}
+
+  .filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--line);background:transparent;color:var(--ink2);cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--accent);color:var(--ink)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+  .alerts{display:flex;flex-direction:column;gap:9px}
+  .alert{display:flex;gap:10px;align-items:flex-start;border-left:3px solid;border-radius:0 8px 8px 0;padding:10px 12px}
+  .alert.red{border-color:var(--red);background:var(--red-bg)}
+  .alert.amber{border-color:var(--amber);background:var(--amber-bg)}
+  .alert.blue{border-color:var(--accent);background:var(--accent-bg)}
+  .alert .bdg{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;background:rgba(0,0,0,.28);flex-shrink:0;margin-top:1px}
+  .alert.red .bdg{color:#ff8a8a}.alert.amber .bdg{color:#f5c451}.alert.blue .bdg{color:#7cd0f0}
+  .alert .h{font-size:13px;font-weight:600;margin-bottom:1px}
+  .alert .b{font-size:11.5px;color:var(--ink2);line-height:1.4}
+
+  /* heatmap */
+  .heat{overflow-x:auto}
+  table.hm{border-collapse:collapse;font-size:11.5px;width:100%;min-width:640px}
+  table.hm th,table.hm td{padding:7px 6px;text-align:center;border:1px solid var(--line)}
+  table.hm th{background:#0e4460;color:#cfeaf5;font-weight:600;font-size:11px}
+  table.hm td:first-child,table.hm th:first-child{text-align:left;background:#0e4460;color:#cfeaf5;font-weight:600;white-space:nowrap}
+  .cell{font-weight:600;color:#fff;border-radius:3px}
+
+  table.dt{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.dt th,table.dt td{padding:8px 9px;text-align:center;border-bottom:1px solid var(--line)}
+  table.dt th{background:#0e4460;color:#cfeaf5;font-weight:600}
+  table.dt td:first-child,table.dt th:first-child{text-align:left}
+  table.dt tbody tr:hover{background:#122d3d}
+  .num{font-variant-numeric:tabular-nums}
+  .rt{font-weight:700}.rt.hi{color:#ff8a8a}.rt.mid{color:#f5c451}
+
+  .askcard{margin-top:16px}
+  .qrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .qbtn{font-size:12.5px;padding:8px 13px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;transition:.15s}
+  .qbtn:hover{border-color:var(--accent);background:#153b4f}
+  .answer{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-height:60px;font-size:13.5px;line-height:1.6}
+  .answer .who{font-size:11.5px;color:#5fc8ee;font-weight:700;margin-bottom:6px;letter-spacing:.4px}
+  footer{margin-top:24px;font-size:11.5px;color:var(--muted);text-align:center;line-height:1.7}
+  h2.sec{font-size:15px;font-weight:600;margin:22px 0 2px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <div class="logo">H₂O</div>
+      <div>
+        <h1>IOC Sơn La — Giám sát chất lượng nước các hồ chứa</h1>
+        <p>Quan trắc môi trường nước mặt · 5 hồ · 7 đợt (2025–2026) · Đối chiếu QCVN 08:2023/BTNMT</p>
+      </div>
+    </div>
+    <div class="tags">
+      <span class="tag src">Dữ liệu quan trắc thật</span>
+      <span class="tag live"><span class="dot"></span>Live</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="banner">
+    <div class="ic">!</div>
+    <div>
+      <div class="h">CẢNH BÁO ĐỎ — Chỉ tiêu TSS (chất rắn lơ lửng) vượt quy chuẩn nghiêm trọng</div>
+      <div class="b">Hồ Chiềng Khoi (đợt 1/2025): TSS = 459 mg/L, gấp 91,8 lần ngưỡng ≤5 · Hồ Lái Bay: 100 mg/L · Hồ bản Mòng: 121 mg/L</div>
+    </div>
+  </div>
+
+  <section class="kpis">
+    <div class="kpi blue"><div class="lab">Số hồ giám sát</div><div class="val num">5</div><div class="sub">hồ chứa trọng điểm</div></div>
+    <div class="kpi blue"><div class="lab">Chỉ tiêu × Số đợt</div><div class="val num">22<small> × 7</small></div><div class="sub">quan trắc 2025–2026</div></div>
+    <div class="kpi green"><div class="lab">Tỷ lệ đạt QCVN</div><div class="val num">78,3%</div><div class="sub">270/345 phép đo đạt</div></div>
+    <div class="kpi red"><div class="lab">Lượt vượt ngưỡng</div><div class="val num">75</div><div class="sub">cần theo dõi, xử lý</div></div>
+    <div class="kpi red"><div class="lab">Vượt cao nhất</div><div class="val num">91,8<small>×</small></div><div class="sub">TSS — Chiềng Khoi</div></div>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Số lượt vượt quy chuẩn theo chỉ tiêu</h2>
+      <div class="desc">Xác định chỉ tiêu ô nhiễm chính cần ưu tiên xử lý.</div>
+      <div class="chartbox"><canvas id="paramChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Cảnh báo môi trường tự động</h2>
+      <div class="desc">Hệ thống sinh cảnh báo khi vượt QCVN 08:2023.</div>
+      <div class="alerts" id="alerts"></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Diễn biến TSS theo đợt quan trắc (mg/L)</h2>
+      <div class="desc">Ngưỡng QCVN ≤ 5 mg/L (đường đứt). Lọc theo hồ để xem xu hướng.</div>
+      <div class="filters" id="hoFilter"></div>
+      <div class="chartbox"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Số lượt vượt ngưỡng theo hồ</h2>
+      <div class="desc">Hồ nào cần ưu tiên kiểm tra nguồn thải.</div>
+      <div class="chartbox"><canvas id="hoChart"></canvas></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Bản đồ nhiệt — TSS theo hồ và đợt quan trắc</h2>
+  <div class="card" style="margin-top:8px">
+    <div class="desc">Màu càng đỏ = càng vượt ngưỡng. Ô xanh = đạt QCVN (≤5 mg/L).</div>
+    <div class="heat"><table class="hm" id="heatmap"></table></div>
+  </div>
+
+  <h2 class="sec">Bảng cảnh báo chi tiết — các điểm vượt ngưỡng nghiêm trọng nhất</h2>
+  <div class="card" style="margin-top:8px">
+    <div style="overflow-x:auto">
+      <table class="dt">
+        <thead><tr><th>Chỉ tiêu</th><th>Hồ</th><th>Đợt</th><th>Kết quả</th><th>QCVN</th><th>Vượt</th><th>Mức</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card askcard">
+    <h2>Hỏi đáp bằng AI (Chatbot dữ liệu quan trắc)</h2>
+    <div class="desc">Bấm câu hỏi mẫu — trợ lý AI truy vấn trực tiếp trên dữ liệu chất lượng nước.</div>
+    <div class="qrow" id="qrow"></div>
+    <div class="answer" id="answer"><div class="who">◆ TRỢ LÝ AI</div>Chọn một câu hỏi phía trên để xem trợ lý AI phân tích chất lượng nước.</div>
+  </div>
+
+  <footer>
+    Kịch bản: AI giám sát chất lượng nước các hồ chứa, cảnh báo vượt quy chuẩn môi trường<br>
+    Cuộc thi ứng dụng AI và khai thác Kho dữ liệu dùng chung tỉnh Sơn La năm 2026 · Đội thi Dữ liệu AI — Sở Nông nghiệp và Môi trường
+  </footer>
+</div>
+
+<script>
+const vn = n => (typeof n==='number'?(Number.isInteger(n)?n.toLocaleString('vi-VN'):n.toFixed(1)):n);
+const hos=['Chiềng Khoi','bản Mòn','bản Mòng','Lái Bay','Suối Chiếu'];
+const dots=['Đợt 1/25','Đợt 2/25','Đợt 3/25','Đợt 4/25','Đợt 1/26','Đợt 2/26','Đợt 3/26'];
+
+// ---- Chart chỉ tiêu ----
+const params=[['TSS',27],['BOD5',14],['E.Coli',13],['COD',11],['Tổng Coliform',4],['Sắt',2],['Amoni',1],['Tổng Nitơ',1],['Tổng P',1],['Mangan',1]];
+new Chart(document.getElementById('paramChart'),{
+  type:'bar',
+  data:{labels:params.map(p=>p[0]),datasets:[{data:params.map(p=>p[1]),
+    backgroundColor:params.map(p=>p[1]>=10?'#e35555':p[1]>=3?'#eda100':'#2ba8d6'),borderRadius:4,barThickness:16}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' lượt vượt ngưỡng'}}},
+    scales:{x:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#7896a6'}},
+            y:{grid:{display:false},ticks:{color:'#cfeaf5',font:{size:12}}}}}
+});
+
+// ---- TSS trend ----
+const tssData={
+ 'Chiềng Khoi':[459,6,4,7,3,9,20],'bản Mòn':[15,40,9,16,8,36,22],
+ 'bản Mòng':[12,121,3,3,4,7,7],'Lái Bay':[100,9,6,3,3,65,8],'Suối Chiếu':[15,6,22,13,3,8,6]};
+const tssColors={'Chiềng Khoi':'#2a78d6','bản Mòn':'#e34948','bản Mòng':'#1baf7a','Lái Bay':'#eda100','Suối Chiếu':'#9085e9'};
+let trendChart;
+function drawTrend(sel){
+  const ds=hos.filter(h=>sel==='all'||h===sel).map(h=>({
+    label:h,data:tssData[h],borderColor:tssColors[h],backgroundColor:tssColors[h],
+    borderWidth:2,tension:.25,pointRadius:3,fill:false}));
+  ds.push({label:'Ngưỡng QCVN (5)',data:new Array(7).fill(5),borderColor:'#ff6b6b',borderDash:[6,4],borderWidth:1.5,pointRadius:0,fill:false});
+  const cfg={type:'line',data:{labels:dots,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'bottom',labels:{color:'#a7c4d2',font:{size:11},boxWidth:12,padding:8}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+' mg/L'}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#a7c4d2',font:{size:11}}},
+              y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#7896a6'},title:{display:true,text:'mg/L',color:'#7896a6'}}}}};
+  if(trendChart){trendChart.data=cfg.data;trendChart.update();}else trendChart=new Chart(document.getElementById('trendChart'),cfg);
+}
+const hf=document.getElementById('hoFilter');
+[['all','Tất cả hồ'],...hos.map(h=>[h,'Hồ '+h])].forEach((f,i)=>{
+  const b=document.createElement('button');b.className='chip'+(i===0?' on':'');b.textContent=f[1];
+  b.onclick=()=>{document.querySelectorAll('#hoFilter .chip').forEach(c=>c.classList.remove('on'));b.classList.add('on');drawTrend(f[0]);};
+  hf.appendChild(b);
+});
+drawTrend('all');
+
+// ---- Chart theo hồ ----
+const perHo=[['bản Mòn',20],['bản Mòng',18],['Suối Chiếu',14],['Lái Bay',12],['Chiềng Khoi',11]];
+new Chart(document.getElementById('hoChart'),{
+  type:'bar',
+  data:{labels:perHo.map(h=>h[0]),datasets:[{data:perHo.map(h=>h[1]),
+    backgroundColor:['#e34948','#e35d5d','#eda100','#eda100','#2ba8d6'],borderRadius:4,barThickness:26}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+c.raw+' lượt vượt ngưỡng'}}},
+    scales:{x:{grid:{display:false},ticks:{color:'#cfeaf5',font:{size:11.5}}},
+            y:{grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#7896a6'}}}}
+});
+
+// ---- Heatmap TSS ----
+function heatColor(v){
+  if(v<=5) return '#1b6e50';
+  if(v<=10) return '#8a7a10';
+  if(v<=25) return '#b5651f';
+  if(v<=60) return '#c0392b';
+  return '#8c1d1d';
+}
+let hm='<tr><th>Hồ \\ Đợt</th>'+dots.map(d=>`<th>${d}</th>`).join('')+'</tr>';
+hos.forEach(h=>{
+  hm+=`<tr><td>${h}</td>`+tssData[h].map(v=>`<td class="cell" style="background:${heatColor(v)}" title="${v} mg/L">${v}</td>`).join('')+'</tr>';
+});
+document.getElementById('heatmap').innerHTML=hm;
+
+// ---- Alerts ----
+const alerts=[
+  ['red','ĐỎ · TSS','Chất rắn lơ lửng vượt tới 91,8 lần','Hồ Chiềng Khoi đợt 1/2025 đạt 459 mg/L. Nghi do xói mòn, rửa trôi đất, hoạt động canh tác quanh hồ. Đề xuất kiểm tra nguồn thải, đánh giá bồi lắng.'],
+  ['red','ĐỎ · Vi sinh','E.Coli, Coliform vượt ngưỡng nhiều điểm','Bản Mòn đợt 2/2025: E.Coli 790 (gấp 39,5 lần). Nguy cơ ô nhiễm phân, ảnh hưởng cấp nước, nuôi trồng thủy sản. Cần rà soát nguồn thải sinh hoạt, chăn nuôi.'],
+  ['amber','CAM · Hữu cơ','BOD5, COD vượt ngưỡng ở nhiều hồ','Dấu hiệu ô nhiễm hữu cơ (bản Mòn BOD5 23,5). Theo dõi diễn biến, đánh giá hoạt động nuôi cá lồng, xả thải.'],
+  ['blue','TÍCH CỰC','Kim loại nặng, thuốc BVTV đạt chuẩn','Cu, Zn, Cr6+, Cyanide và các hóa chất BVTV (Aldrin, DDT...) hầu hết không phát hiện — nước hồ an toàn về độc chất.'],
+];
+document.getElementById('alerts').innerHTML=alerts.map(a=>`
+  <div class="alert ${a[0]}"><span class="bdg">${a[1]}</span>
+    <div><div class="h">${a[2]}</div><div class="b">${a[3]}</div></div></div>`).join('');
+
+// ---- Bảng chi tiết ----
+const rows=[
+  ['TSS','Chiềng Khoi','Đợt 1/2025','459 mg/L','≤ 5','91,8×','hi'],
+  ['E.Coli','bản Mòn','Đợt 2/2025','790 MPN','≤ 20','39,5×','hi'],
+  ['TSS','bản Mòng','Đợt 2/2025','121 mg/L','≤ 5','24,2×','hi'],
+  ['TSS','Lái Bay','Đợt 1/2025','100 mg/L','≤ 5','20,0×','hi'],
+  ['TSS','Lái Bay','Đợt 2/2026','65 mg/L','≤ 5','13,0×','hi'],
+  ['BOD5','bản Mòn','Đợt 2/2025','23,5 mg/L','≤ 4','5,9×','mid'],
+  ['COD','bản Mòn','Đợt 2/2025','44 mg/L','≤ 10','4,4×','mid'],
+  ['Tổng Coliform','bản Mòng','Đợt 3/2026','1.400 MPN','≤ 1.000','1,4×','mid'],
+];
+document.getElementById('tbody').innerHTML=rows.map(r=>`
+  <tr><td style="font-weight:600">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>
+  <td class="num" style="font-weight:600">${r[3]}</td><td class="num">${r[4]}</td>
+  <td class="rt ${r[6]}">${r[5]}</td>
+  <td><span style="font-size:10.5px;font-weight:700;color:${r[6]==='hi'?'#ff8a8a':'#f5c451'}">${r[6]==='hi'?'ĐỎ':'CAM'}</span></td></tr>`).join('');
+
+// ---- Chatbot ----
+const qa=[
+  ['Chỉ tiêu nào ô nhiễm nhất?',
+   'Chỉ tiêu ô nhiễm nhất là TSS (chất rắn lơ lửng) với 27 lượt vượt ngưỡng. Nghiêm trọng nhất là hồ Chiềng Khoi đợt 1/2025 đạt 459 mg/L — gấp 91,8 lần ngưỡng QCVN (≤5 mg/L). Nguyên nhân thường do xói mòn, rửa trôi đất quanh hồ.'],
+  ['Hồ nào cần ưu tiên xử lý?',
+   'Hồ bản Mòn cần ưu tiên nhất với 20 lượt vượt ngưỡng, tiếp theo là bản Mòng (18 lượt) và Suối Chiếu (14 lượt). Bản Mòn có cả TSS, BOD5, COD và E.Coli vượt chuẩn — dấu hiệu ô nhiễm hữu cơ và vi sinh, cần kiểm tra nguồn thải sinh hoạt và chăn nuôi.'],
+  ['Nước hồ có an toàn về kim loại nặng không?',
+   'Có. Các kim loại nặng (đồng, kẽm, crom, mangan) và hóa chất bảo vệ thực vật (Aldrin, Lindane, DDT, Dieldrin...) hầu hết không phát hiện hoặc dưới ngưỡng. Nước hồ an toàn về độc chất; vấn đề chủ yếu là chất rắn lơ lửng và ô nhiễm vi sinh, hữu cơ.'],
+  ['Tình hình vi sinh (E.Coli) thế nào?',
+   'E.Coli vượt ngưỡng 13 lượt, cao nhất tại bản Mòn đợt 2/2025 (790 MPN, gấp 39,5 lần). Đây là cảnh báo nguy cơ ô nhiễm phân, ảnh hưởng đến cấp nước sinh hoạt và nuôi trồng thủy sản. Đề xuất khuyến cáo người dân và kiểm soát nguồn thải.'],
+  ['AI đề xuất lãnh đạo làm gì?',
+   'Ba nhóm hành động: (1) Với TSS cao — kiểm tra xói mòn, canh tác quanh hồ, đánh giá bồi lắng; (2) Với vi sinh, hữu cơ — rà soát nguồn thải sinh hoạt, chăn nuôi, nuôi cá lồng, khuyến cáo cộng đồng; (3) Duy trì quan trắc định kỳ và công khai chỉ số chất lượng nước trên Cổng dữ liệu mở để người dân giám sát.'],
+];
+const qrow=document.getElementById('qrow'),ans=document.getElementById('answer');
+qa.forEach(([q,a])=>{
+  const b=document.createElement('button');b.className='qbtn';b.textContent=q;
+  b.onclick=()=>{ans.innerHTML=`<div class="who">◆ TRỢ LÝ AI</div><span id="typ"></span>`;
+    const el=document.getElementById('typ');let i=0;
+    (function type(){if(i<=a.length){el.textContent=a.slice(0,i);i+=2;requestAnimationFrame(type);}else el.textContent=a;})();};
+  qrow.appendChild(b);
+});
+</script>
+</body>
+</html>
